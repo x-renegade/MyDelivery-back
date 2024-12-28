@@ -3,9 +3,10 @@ using Microsoft.AspNetCore.Identity;
 
 namespace Api.Extensions;
 
-public class UserRoleExtension
+public static class UserRoleExtension
 {
-    public static async Task InitializeRolesAsync(IHost app)
+    public static async Task InitializeRolesAsync(this WebApplication app)
+
     {
         using var scope = app.Services.CreateScope();
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();

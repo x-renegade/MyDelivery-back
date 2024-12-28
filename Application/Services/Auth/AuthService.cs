@@ -1,5 +1,4 @@
-﻿
-using Application.Common.Contracts;
+﻿using Application.Common.Contracts;
 using Application.Common.Exceptions;
 using Application.Common.Models.User.Requests;
 using Application.Common.Models.User.Responses;
@@ -9,7 +8,7 @@ using Microsoft.Extensions.Configuration;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
-namespace Application.Services;
+namespace Application.Services.Auth;
 
 public class AuthService(
         UserManager<User> userManager,

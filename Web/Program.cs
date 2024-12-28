@@ -1,57 +1,27 @@
 using Api.Extensions;
-using Api.Middlewares;
 using Api.Services;
-using Application.Common.Contracts;
-using Application.Common.Utilities;
-using Application.Services;
+namespace Api;
 
-namespace Apiж
+public class Program
 {
-    public class Program
+    public static async Task Main(string[] args)
     {
-        public static async Task Main(string[] args)
-        {
-            var builder = WebApplication.CreateBuilder(args);
-            ConfigurationManager configuration = builder.Configuration;
+        var builder = WebApplication.CreateBuilder(args);
 
+        // Настройка сервисов
+        builder.Services.ConfigureHosting(builder.Configuration);
 
-            using var loggerFactory = LoggerFactory.Create(builder => { });
-            // Add services to the container.
+        // Настройка URL
+        builder.WebHost.UseUrls("https://localhost:5000");
 
-            builder.Services.ConfigureHosting(configuration);
-            builder.Services.AddScoped<IAuthService, AuthService>();
-            builder.Services.AddScoped<ITokenService, TokenService>();
-            builder.Services.AddScoped<GlobalExceptionMiddleware>();
+        var app = builder.Build();
 
-            builder.Services.AddLogging();
-            builder.Logging.AddConsole();
+        // Настройка Middleware
+        app.ConfigurePipeline();
 
-            builder.Services.AddControllers();
+        // Инициализация ролей
+        await app.InitializeRolesAsync();
 
-            builder.WebHost.UseUrls("https://localhost:5000");
-
-            var app = builder.Build();
-
-            // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
-            {
-                app.UseSwagger();
-                app.UseSwaggerUI();
-            }
-            app.UseMiddleware<GlobalExceptionMiddleware>();
-
-            app.UseHttpsRedirection();
-            app.UseRouting();
-            app.UseCors("myCors");
-            // Authentication & Authorization
-            app.UseAuthentication();
-            app.UseAuthorization();
-
-            await UserRoleExtension.InitializeRolesAsync(app);
-            app.MapControllers();
-
-            app.Run();
-
-        }
+        app.Run();
     }
 }
