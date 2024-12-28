@@ -1,28 +1,24 @@
-﻿using Application.Common.Contracts;
+﻿
+using Application.Common.Contracts;
+using Application.Common.Contracts.Repositories;
+using Application.Common.Contracts.Services;
 using Application.Common.Exceptions;
 using Application.Common.Models.User.Requests;
 using Application.Common.Models.User.Responses;
 using Domain.Entities;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Configuration;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
 namespace Application.Services.Auth;
 
-public class AuthService(
-        UserManager<User> userManager,
-        SignInManager<User> signInManager,
-        ITokenService tokenService,
-        IConfiguration configuration) : IAuthService
+public class AuthService(IUserRepository userRepository, ITokenService tokenService, IAppConfiguration appConfiguration) : IAuthService
 {
-
     public async Task<RefreshTokenResponse> RefreshTokenAsync(RefreshTokenRequest request)
     {
         var principal = tokenService.ValidateToken(request.AccessToken) ??
             throw new InvalidTokenException("Invalid access token or refresh token");
 
-        var user = await userManager.FindByNameAsync(principal.Identity?.Name!) ??
+        var user = await userRepository.GetUserByNameAsync(principal.Identity?.Name!) ??
             throw new UserNotFoundException("User does not exist");
 
         if (user.RefreshToken != request.RefreshToken || user.RefreshTokenExpiryTime <= DateTime.Now)
@@ -42,42 +38,38 @@ public class AuthService(
     {
         user.RefreshToken = null;
         user.RefreshTokenExpiryTime = DateTime.MinValue;
-        await userManager.UpdateAsync(user);
-        await signInManager.SignOutAsync();
+        await userRepository.UpdateUserAsync(user);
     }
 
     public async Task RevokeAllAsync()
     {
-        var users = userManager.Users.ToList();
+        var users = await userRepository.GetAllUsersAsync();
         await Parallel.ForEachAsync(users, async (user, _) =>
         {
             user.RefreshToken = null;
             user.RefreshTokenExpiryTime = DateTime.MinValue;
-            await userManager.UpdateAsync(user);
+            await userRepository.UpdateUserAsync(user);
         });
     }
 
     public async Task<SignInResponse> SignInAsync(SignInRequest request)
     {
-        var user = await userManager.FindByEmailAsync(request.Email) ??
-            throw new UserNotFoundException($"User with email {request.Email} not found.");
+        // Проверяем, существует ли пользователь с указанным email
+        var user = await userRepository.GetUserByEmailAsync(request.Email) ??
+            throw new UserNotFoundException("User not found.");
 
-        var result = await signInManager.PasswordSignInAsync(request.Email, request.Password, isPersistent: false, lockoutOnFailure: false);
-
-        if (!result.Succeeded)
+        // Проверяем пароль пользователя
+        var isPasswordValid = await userRepository.SignInAsync(request.Email, request.Password);
+        if (!isPasswordValid)
         {
-            if (result.IsLockedOut)
-                throw new UserException("User account is locked.");
             throw new PasswordIncorrectException("The password is incorrect.");
         }
 
         // Получаем роли пользователя
-        var userRoles = await userManager.GetRolesAsync(user);
-
-        // Преобразуем список ролей в список Claims
-        var claims = userRoles.Select(role => new Claim(ClaimTypes.Role, role)).ToList();
+        var userRoles = await userRepository.GetUserRolesAsync(user);
 
         // Генерируем токены
+        var claims = userRoles.Select(role => new Claim(ClaimTypes.Role, role)).ToList();
         (string accessToken, string refreshToken, DateTime expiration) = await GenerateTokensAsync(user, claims);
 
         return new SignInResponse
@@ -88,19 +80,12 @@ public class AuthService(
         };
     }
 
-
-
     public async Task<bool> SignUpAsync(SignUpRequest request)
     {
-        // Проверяем, существует ли уже пользователь с таким email
-        var isEmailExist = await userManager.FindByEmailAsync(request.Email);
+        var isEmailExist = await userRepository.GetUserByEmailAsync(request.Email);
         if (isEmailExist != null)
-        {
-            // Если email уже существует, выбрасываем исключение
             throw new UserAlreadyExistsException($"User with email {request.Email} already exists.");
-        }
 
-        // Создаем нового пользователя
         User user = new()
         {
             Email = request.Email,
@@ -109,16 +94,11 @@ public class AuthService(
             FirstName = request.FirstName
         };
 
-        var result = await userManager.CreateAsync(user, request.Password);
-
-        // Проверка успешности создания пользователя
-        if (!result.Succeeded)
-        {
+        var result = await userRepository.CreateUserAsync(user, request.Password);
+        if (!result)
             throw new UserException("Failed to create user.");
-        }
 
-        // Добавляем пользователя в роль User
-        await userManager.AddToRoleAsync(user, UserRoles.User);
+        await userRepository.AddUserToRoleAsync(user, UserRoles.User);
 
         return true;
     }
@@ -127,11 +107,10 @@ public class AuthService(
     {
         var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.Email, user.Email!),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new(ClaimTypes.Email, user.Email!),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
         };
 
-        // Добавляем дополнительные claims (например, роли)
         claims.AddRange(additionalClaims);
 
         var token = tokenService.GenerateToken(claims);
@@ -139,14 +118,11 @@ public class AuthService(
 
         user.RefreshToken = refreshToken;
         user.RefreshTokenExpiryTime = DateTime.Now.AddDays(
-            int.TryParse(configuration["JWT:RefreshTokenValidityInDays"], out var days) ? days : 7
+            int.TryParse(appConfiguration.GetValue("JWT:RefreshTokenValidityInDays"), out var days) ? days : 7
         );
 
-        await userManager.UpdateAsync(user);
+        await userRepository.UpdateUserAsync(user);
 
         return (new JwtSecurityTokenHandler().WriteToken(token), refreshToken, token.ValidTo);
     }
-
 }
-
-

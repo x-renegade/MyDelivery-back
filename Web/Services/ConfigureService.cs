@@ -1,8 +1,11 @@
 ﻿using Api.Extensions;
 using Api.Middlewares;
 using Application.Common.Contracts;
+using Application.Common.Contracts.Repositories;
+using Application.Common.Contracts.Services;
 using Application.Common.Utilities;
 using Application.Services.Auth;
+using Infrastructure.Repositories;
 
 namespace Api.Services
 {
@@ -16,6 +19,9 @@ namespace Api.Services
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<ITokenService, TokenService>();
             services.AddScoped<GlobalExceptionMiddleware>();
+            services.AddScoped<IAppConfiguration, AppConfiguration>();
+            services.AddScoped<IUserRepository, UserRepository>();
+
 
             services.AddLogging();
             services.AddControllers();

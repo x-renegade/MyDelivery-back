@@ -1,5 +1,5 @@
 ﻿using Application.Common.Contracts;
-using Microsoft.Extensions.Configuration;
+using Application.Common.Contracts.Services;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -8,7 +8,7 @@ using System.Text;
 
 namespace Application.Common.Utilities
 {
-    public class TokenService(IConfiguration configuration) : ITokenService
+    public class TokenService(IAppConfiguration configuration) : ITokenService
     {
         public string GenerateRefreshToken()
         {
@@ -20,12 +20,12 @@ namespace Application.Common.Utilities
 
         public JwtSecurityToken GenerateToken(List<Claim> authClaims)
         {
-            var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JWT:Secret"]!));
-            _ = int.TryParse(configuration["JWT:TokenValidityInMinutes"], out int tokenValidityInMinutes);
+            var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration.GetValue("JWT:Secret")));
+            _ = int.TryParse(configuration.GetValue("JWT:TokenValidityInMinutes"), out int tokenValidityInMinutes);
 
             var token = new JwtSecurityToken(
-                issuer: configuration["JWT:ValidIssuer"],
-                audience: configuration["JWT:ValidAudience"],
+                issuer: configuration.GetValue("JWT:ValidIssuer"),
+                audience: configuration.GetValue("JWT:ValidAudience"),
                 expires: DateTime.Now.AddMinutes(tokenValidityInMinutes),
                 claims: authClaims,
                 signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)
@@ -40,7 +40,7 @@ namespace Application.Common.Utilities
                 ValidateAudience = false,
                 ValidateIssuer = false,
                 ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JWT:Secret"]!)),
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration.GetValue("JWT:Secret"))),
                 ValidateLifetime = false
             };
 

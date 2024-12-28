@@ -1,4 +1,4 @@
-﻿using Application.Common.Contracts;
+﻿using Application.Common.Contracts.Services;
 using Application.Common.Exceptions;
 using Application.Common.Models.User.Requests;
 using Microsoft.AspNetCore.Mvc;
