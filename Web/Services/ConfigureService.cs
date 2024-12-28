@@ -1,16 +1,16 @@
-﻿using Web.Extensions;
-using Web.Middlewares;
+﻿using Api.Extensions;
 
-namespace Web.Services
+namespace Api.Services
 {
     public static class ConfigureService
     {
-        public static void ConfigureHosting(this IServiceCollection services, ConfigurationManager configuration) {
+        public static void ConfigureHosting(this IServiceCollection services, ConfigurationManager configuration)
+        {
 
             services.AddAuthentication();
             services.AddAuthorization();
 
-            services.AddSingleton<GlobalExceptionMiddleware>();
+          
 
             services.ConfigureCors(configuration);
             services.CongigureContextNpgsql(configuration);

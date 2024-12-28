@@ -6,10 +6,10 @@ namespace Application.Common.Contracts
 {
     public interface IAuthService
     {
-        Task<SignInResponse> SignIn(SignInRequest request);
-        Task<bool> SignUp(SignUpRequest request);
-        Task<RefreshTokenResponse> RefreshToken(RefreshTokenRequest request);
-        Task Revoke(User user);
-        Task RevokeAll();
+        Task<SignInResponse> SignInAsync(SignInRequest request);
+        Task<bool> SignUpAsync(SignUpRequest request);
+        Task<RefreshTokenResponse> RefreshTokenAsync(RefreshTokenRequest request);
+        Task RevokeAsync(User user);
+        Task RevokeAllAsync();
     }
 }

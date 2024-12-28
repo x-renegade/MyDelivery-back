@@ -2,7 +2,7 @@
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
-namespace Web.Extensions
+namespace Api.Extensions
 {
     internal static class JWTExtension
     {

@@ -1,27 +1,71 @@
 ﻿using Application.Common.Contracts;
+using Application.Common.Exceptions;
 using Application.Common.Models.User.Requests;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Web.Controllers
-{
-    [ApiController]
-    [Route("api/[controller]")]
-    public class AuthController(
-    IAuthService authService) : ControllerBase
-    {
-        [HttpPost]
-        [Route("sign-in")]
-        public async Task<IActionResult> SignIn(SignInRequest request)
-            => Ok(await authService.SignIn(request));
+namespace Api.Controllers;
 
-        [HttpPost]
-        [Route("sign-up")]
-        public async Task<IActionResult> SignUp(SignUpRequest request)
-            => Ok(await authService.SignUp(request));
-        [HttpPost]
-        [Route("refresh-token")]
-        public async Task<IActionResult> RefreshToken(RefreshTokenRequest request)
-            => Ok(await authService.RefreshToken(request));
+[ApiController]
+[Route("api/[controller]")]
+public class AuthController(IAuthService authService) : ControllerBase
+{
+
+
+    // Регистрация пользователя
+    [HttpPost("signup")]
+    public async Task<IActionResult> SignUp([FromBody] SignUpRequest request)
+    {
+        try
+        {
+            var result = await authService.SignUpAsync(request);
+            return Ok(new { message = "User created successfully" });
+        }
+        catch (UserAlreadyExistsException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (UserException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    // Вход пользователя
+    [HttpPost("signin")]
+    public async Task<IActionResult> SignIn([FromBody] SignInRequest request)
+    {
+        try
+        {
+            var response = await authService.SignInAsync(request);
+            return Ok(response); // Вернем токен и информацию о пользователе
+        }
+        catch (UserNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (PasswordIncorrectException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (UserException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    // Обновление токена (Refresh Token)
+    [HttpPost("refresh")]
+    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
+    {
+        try
+        {
+            var response = await authService.RefreshTokenAsync(request);
+            return Ok(response); // Вернем новый токен
+        }
+        catch (InvalidTokenException ex)
+        {
+
+            return Unauthorized(new { error = ex.Message });
+        }
     }
 }

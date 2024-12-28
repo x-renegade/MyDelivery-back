@@ -1,4 +1,4 @@
-﻿namespace Web.Extensions
+﻿namespace Api.Extensions
 {
     internal static class CorsExtension
     {

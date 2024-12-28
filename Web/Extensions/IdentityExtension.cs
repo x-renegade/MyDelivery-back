@@ -2,7 +2,7 @@
 using Infrastructure.Data;
 using Microsoft.AspNetCore.Identity;
 
-namespace Web.Extensions
+namespace Api.Extensions
 {
     internal static class IdentityExtension
     {

@@ -1,15 +1,15 @@
+using Api.Extensions;
+using Api.Middlewares;
+using Api.Services;
 using Application.Common.Contracts;
 using Application.Common.Utilities;
 using Application.Services;
-using Web.Extensions;
-using Web.Middlewares;
-using Web.Services;
 
-namespace Web
+namespace Apiæ
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
             ConfigurationManager configuration = builder.Configuration;
@@ -21,11 +21,14 @@ namespace Web
             builder.Services.ConfigureHosting(configuration);
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<ITokenService, TokenService>();
+            builder.Services.AddScoped<GlobalExceptionMiddleware>();
 
+            builder.Services.AddLogging();
+            builder.Logging.AddConsole();
 
             builder.Services.AddControllers();
 
-            builder.WebHost.UseUrls("http://localhost:5000");
+            builder.WebHost.UseUrls("https://localhost:5000");
 
             var app = builder.Build();
 
@@ -36,7 +39,7 @@ namespace Web
                 app.UseSwaggerUI();
             }
             app.UseMiddleware<GlobalExceptionMiddleware>();
-            app.ConfigureExceptionHandler(loggerFactory.CreateLogger("Exceptions"));
+
             app.UseHttpsRedirection();
             app.UseRouting();
             app.UseCors("myCors");
@@ -44,9 +47,11 @@ namespace Web
             app.UseAuthentication();
             app.UseAuthorization();
 
+            await UserRoleExtension.InitializeRolesAsync(app);
             app.MapControllers();
 
             app.Run();
+
         }
     }
 }

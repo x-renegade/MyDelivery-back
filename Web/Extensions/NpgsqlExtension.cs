@@ -1,7 +1,7 @@
 ﻿using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace Web.Extensions
+namespace Api.Extensions
 {
     internal static class NpgsqlExtension
     {
