@@ -4,8 +4,8 @@ using Application.Common.Contracts;
 using Application.Common.Contracts.Repositories;
 using Application.Common.Contracts.Services;
 using Application.Common.Utilities;
-using Application.Services.Auth;
 using Infrastructure.Repositories;
+using Infrastructure.Services.Auth;
 
 namespace Api.Services
 {
@@ -13,6 +13,7 @@ namespace Api.Services
     {
         public static void ConfigureHosting(this IServiceCollection services, ConfigurationManager configuration)
         {
+            services.AddHttpContextAccessor();
 
             services.AddAuthentication();
             services.AddAuthorization();

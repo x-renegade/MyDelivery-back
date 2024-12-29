@@ -1,54 +1,78 @@
-﻿
-using Application.Common.Contracts;
+﻿using Application.Common.Contracts;
 using Application.Common.Contracts.Repositories;
 using Application.Common.Contracts.Services;
 using Application.Common.Exceptions;
 using Application.Common.Models.User.Requests;
 using Application.Common.Models.User.Responses;
 using Domain.Entities;
+using Microsoft.AspNetCore.Http;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
-namespace Application.Services.Auth;
+namespace Infrastructure.Services.Auth;
 
-public class AuthService(IUserRepository userRepository, ITokenService tokenService, IAppConfiguration appConfiguration) : IAuthService
+public class AuthService(IUserRepository userRepository, ITokenService tokenService, IAppConfiguration appConfiguration, IHttpContextAccessor httpContextAccessor) : IAuthService
 {
     public async Task<RefreshTokenResponse> RefreshTokenAsync(RefreshTokenRequest request)
     {
-        var tokenHandler = new JwtSecurityTokenHandler();
-        var jwtToken = tokenHandler.ReadJwtToken(request.AccessToken);
+        // Получаем HTTP-контекст
+        var context = httpContextAccessor.HttpContext ??
+            throw new InvalidOperationException("No active HTTP context.");
 
-        // Извлекаем exp
+        // Извлекаем Access Token из запроса
+        var accessToken = request.AccessToken;
+
+        // Извлекаем Refresh Token из куки
+        var refreshToken = context.Request.Cookies["refreshToken"];
+        if (string.IsNullOrEmpty(refreshToken))
+            throw new InvalidTokenException("Refresh Token is missing.");
+
+        // Валидация Access Token
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var jwtToken = tokenHandler.ReadJwtToken(accessToken);
+
+        // Проверка срока действия Access Token
         var expClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Exp);
         if (expClaim == null || !long.TryParse(expClaim.Value, out var expUnix))
-            throw new InvalidTokenException("Token does not contain a valid expiration claim.");
+            throw new InvalidTokenException("Access Token does not contain a valid expiration claim.");
 
         var expirationDate = DateTimeOffset.FromUnixTimeSeconds(expUnix).UtcDateTime;
         if (DateTime.UtcNow > expirationDate)
-            throw new InvalidTokenException("Token has expired.");
+            throw new InvalidTokenException("Access Token has expired.");
 
+        // Извлекаем информацию о пользователе из Access Token
+        var principal = tokenService.ValidateToken(accessToken) ??
+            throw new InvalidTokenException("Invalid Access Token.");
+        var email = principal.FindFirst(ClaimTypes.Email)?.Value ??
+            throw new UserNotFoundException("Email not found in Access Token.");
 
-        var principal = tokenService.ValidateToken(request.AccessToken) ??
-            throw new InvalidTokenException("Invalid access token or refresh token");
+        // Проверка пользователя и Refresh Token
+        var user = await userRepository.GetUserByEmailAsync(email) ??
+            throw new UserNotFoundException("User does not exist.");
+        if (user.RefreshToken != refreshToken || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+            throw new InvalidTokenException("Invalid Refresh Token or token expired.");
 
-        var email = principal.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
-            ?? throw new UserNotFoundException("Email not found in the token");
+        // Генерация новых токенов
+        var (newAccessToken, newRefreshToken) = await GenerateTokensAsync(user, principal.Claims.ToList());
 
-        var user = await userRepository.GetUserByEmailAsync(email)
-            ?? throw new UserNotFoundException("User does not exist");
+        // Обновление Refresh Token в куки
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.Strict,
+            Expires = DateTime.UtcNow.AddDays(Convert.ToDouble(appConfiguration.GetValue("JWT:RefreshTokenValidityInDays")))
+        };
+        context.Response.Cookies.Append("refreshToken", newRefreshToken, cookieOptions);
 
-
-        if (user.RefreshToken != request.RefreshToken || user.RefreshTokenExpiryTime <= DateTime.Now)
-            throw new InvalidTokenException("Invalid refresh token or token expired");
-
-        var (accessToken, refreshToken) = await GenerateTokensAsync(user, principal.Claims.ToList());
-
+        // Возвращаем новый Access Token
         return new RefreshTokenResponse
         {
-            AccessToken = accessToken,
-            RefreshToken = refreshToken
+            AccessToken = newAccessToken
         };
     }
+
+
 
     public async Task RevokeAsync(User user)
     {
@@ -88,10 +112,24 @@ public class AuthService(IUserRepository userRepository, ITokenService tokenServ
         var claims = userRoles.Select(role => new Claim("role", role)).ToList();
         (string accessToken, string refreshToken) = await GenerateTokensAsync(user, claims);
 
+        var context = httpContextAccessor.HttpContext; 
+        if (context != null)
+        {
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTime.UtcNow.AddDays(Convert.ToDouble(appConfiguration.GetValue("JWT:RefreshTokenValidityInDays")))
+            };
+
+            context.Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
+        }
+
+        // Возвращаем только accessToken
         return new SignInResponse
         {
-            AccessToken = accessToken,
-            RefreshToken = refreshToken
+            AccessToken = accessToken
         };
     }
 

@@ -22,7 +22,8 @@ public class AuthController(IAuthService authService) : ControllerBase
     public async Task<IActionResult> SignIn([FromBody] SignInRequest request)
     {
         var response = await authService.SignInAsync(request);
-        return Ok(response); // Вернем токен и информацию о пользователе
+
+        return Ok(new { accessToken = response.AccessToken });
     }
 
     // Обновление токена (Refresh Token)
