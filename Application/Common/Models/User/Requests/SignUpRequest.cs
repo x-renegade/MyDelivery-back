@@ -5,8 +5,9 @@ namespace Application.Common.Models.User.Requests
 {
     public class SignUpRequest : BaseRequest
     {
-        public string FirstName { get; set; } = null!;
+        [Required(ErrorMessage = "FirstName is required")]
+        public required string FirstName { get; set; } = null!;
         [Required(ErrorMessage = "Password is required")]
-        public string Password { get; set; } = null!;
+        public required string Password { get; set; } = null!;
     }
 }

@@ -6,6 +6,6 @@ namespace Application.Common.Models.User.Requests
     {
         [Required(ErrorMessage = "Email is required")]
         [EmailAddress]
-        public string Email { get; set; } = null!;
+        public required string Email { get; set; } = null!;
     }
 }
