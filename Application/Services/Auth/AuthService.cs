@@ -15,22 +15,38 @@ public class AuthService(IUserRepository userRepository, ITokenService tokenServ
 {
     public async Task<RefreshTokenResponse> RefreshTokenAsync(RefreshTokenRequest request)
     {
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var jwtToken = tokenHandler.ReadJwtToken(request.AccessToken);
+
+        // Извлекаем exp
+        var expClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Exp);
+        if (expClaim == null || !long.TryParse(expClaim.Value, out var expUnix))
+            throw new InvalidTokenException("Token does not contain a valid expiration claim.");
+
+        var expirationDate = DateTimeOffset.FromUnixTimeSeconds(expUnix).UtcDateTime;
+        if (DateTime.UtcNow > expirationDate)
+            throw new InvalidTokenException("Token has expired.");
+
+
         var principal = tokenService.ValidateToken(request.AccessToken) ??
             throw new InvalidTokenException("Invalid access token or refresh token");
 
-        var user = await userRepository.GetUserByNameAsync(principal.Identity?.Name!) ??
-            throw new UserNotFoundException("User does not exist");
+        var email = principal.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
+            ?? throw new UserNotFoundException("Email not found in the token");
+
+        var user = await userRepository.GetUserByEmailAsync(email)
+            ?? throw new UserNotFoundException("User does not exist");
+
 
         if (user.RefreshToken != request.RefreshToken || user.RefreshTokenExpiryTime <= DateTime.Now)
             throw new InvalidTokenException("Invalid refresh token or token expired");
 
-        var (accessToken, refreshToken, expiration) = await GenerateTokensAsync(user, principal.Claims.ToList());
+        var (accessToken, refreshToken) = await GenerateTokensAsync(user, principal.Claims.ToList());
 
         return new RefreshTokenResponse
         {
             AccessToken = accessToken,
-            RefreshToken = refreshToken,
-            Expiration = expiration
+            RefreshToken = refreshToken
         };
     }
 
@@ -69,14 +85,13 @@ public class AuthService(IUserRepository userRepository, ITokenService tokenServ
         var userRoles = await userRepository.GetUserRolesAsync(user);
 
         // Генерируем токены
-        var claims = userRoles.Select(role => new Claim(ClaimTypes.Role, role)).ToList();
-        (string accessToken, string refreshToken, DateTime expiration) = await GenerateTokensAsync(user, claims);
+        var claims = userRoles.Select(role => new Claim("role", role)).ToList();
+        (string accessToken, string refreshToken) = await GenerateTokensAsync(user, claims);
 
         return new SignInResponse
         {
             AccessToken = accessToken,
-            RefreshToken = refreshToken,
-            Expiration = expiration
+            RefreshToken = refreshToken
         };
     }
 
@@ -103,13 +118,14 @@ public class AuthService(IUserRepository userRepository, ITokenService tokenServ
         return true;
     }
 
-    public async Task<(string AccessToken, string RefreshToken, DateTime Expiration)> GenerateTokensAsync(User user, IList<Claim> additionalClaims)
+    public async Task<(string AccessToken, string RefreshToken)> GenerateTokensAsync(User user, IList<Claim> additionalClaims)
     {
         var claims = new List<Claim>
-        {
-            new(ClaimTypes.Email, user.Email!),
-            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-        };
+    {
+        new("email", user.Email!),
+        new ("firstName",user.FirstName),
+        new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+    };
 
         claims.AddRange(additionalClaims);
 
@@ -123,6 +139,7 @@ public class AuthService(IUserRepository userRepository, ITokenService tokenServ
 
         await userRepository.UpdateUserAsync(user);
 
-        return (new JwtSecurityTokenHandler().WriteToken(token), refreshToken, token.ValidTo);
+        return (new JwtSecurityTokenHandler().WriteToken(token), refreshToken);
     }
+
 }
