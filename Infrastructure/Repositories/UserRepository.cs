@@ -48,11 +48,27 @@ namespace Infrastructure.Repositories
         {
             return await userManager.CheckPasswordAsync(user, password);
         }
-
-        public async Task<bool> SignInAsync(string email, string password)
+        public async Task SignOutUserAsync()
         {
-            var result = await signInManager.PasswordSignInAsync(email, password, isPersistent: false, lockoutOnFailure: false);
-            return result.Succeeded;
+            // Получаем текущего пользователя из контекста
+            var user = await userManager.GetUserAsync(signInManager.Context.User) ?? 
+                throw new InvalidOperationException("No authenticated user found.");
+
+            // Удаляем RefreshToken и его срок действия
+            user.RefreshToken = null;
+            user.RefreshTokenExpiryTime = DateTime.MinValue;
+            await UpdateUserAsync(user);
+
+            // Завершаем сессию
+            await signInManager.SignOutAsync();
+        }
+
+        public async Task<bool> SignInUserAsync(User user, bool isPersistent)
+        {
+            ArgumentNullException.ThrowIfNull(user);
+
+            await signInManager.SignInAsync(user, isPersistent);
+            return true;
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using Application.Common.Contracts.Services;
 using Application.Common.Exceptions;
 using Application.Common.Models.User.Requests;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers;
@@ -32,5 +33,12 @@ public class AuthController(IAuthService authService) : ControllerBase
     {
         var response = await authService.RefreshTokenAsync(request);
         return Ok(response); // Вернем новый токен
+    }
+    [HttpPost("logout")]
+    [Authorize]
+    public async Task<IActionResult> Logout()
+    {
+        await authService.SignOutAsync();
+        return Ok(new { message = "User signed out successfully" });
     }
 }

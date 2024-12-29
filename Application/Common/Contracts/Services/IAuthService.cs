@@ -11,4 +11,5 @@ public interface IAuthService
     Task<RefreshTokenResponse> RefreshTokenAsync(RefreshTokenRequest request);
     Task RevokeAsync(User user);
     Task RevokeAllAsync();
+    Task SignOutAsync();
 }

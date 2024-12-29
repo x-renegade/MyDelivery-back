@@ -12,5 +12,6 @@ public interface IUserRepository
     Task UpdateUserAsync(User user);
     Task AddUserToRoleAsync(User user, string role);
     Task<bool> CheckPasswordAsync(User user, string password);
-    Task<bool> SignInAsync(string email, string password);
+    Task<bool> SignInUserAsync(User user, bool isPersistent);
+    Task SignOutUserAsync();
 }
