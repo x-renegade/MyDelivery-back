@@ -10,9 +10,9 @@
                         policy =>
                         {
                             policy.WithOrigins(configuration["JWT:ValidAudience"]!)
+                 .AllowCredentials()
                  .AllowAnyHeader()
-                 .AllowAnyMethod()
-                 .AllowCredentials();
+                 .AllowAnyMethod();
                         });
             });
         }

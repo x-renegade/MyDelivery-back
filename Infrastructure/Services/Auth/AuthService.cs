@@ -35,12 +35,17 @@ public class AuthService(IUserRepository userRepository, ITokenService tokenServ
             throw new InvalidTokenException("Access Token is invalid.");
         }
 
-        var emailClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "email");
-        if (emailClaim == null || string.IsNullOrEmpty(emailClaim.Value))
-            throw new InvalidTokenException("Access Token does not contain a valid email claim.");
-        var email = emailClaim.Value;
+        //var emailClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "email");
+        //if (emailClaim == null || string.IsNullOrEmpty(emailClaim.Value))
+        //    throw new InvalidTokenException("Access Token does not contain a valid email claim.");
+        //var email = emailClaim.Value;
 
-        var user = await userRepository.GetUserByEmailAsync(email) ??
+        var idClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "id");
+        if (idClaim == null || string.IsNullOrEmpty(idClaim.Value))
+            throw new InvalidTokenException("Access Token does not contain a valid email claim.");
+        var id = idClaim.Value;
+
+        var user = await userRepository.GetUserByIdAsync(id) ??
             throw new UserNotFoundException("User does not exist.");
         if (user.RefreshToken != refreshToken || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
             throw new InvalidTokenException("Invalid or expired Refresh Token.");
@@ -116,7 +121,6 @@ public class AuthService(IUserRepository userRepository, ITokenService tokenServ
             context.Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
         }
 
-        // Возвращаем только accessToken
         return new SignInResponse
         {
             AccessToken = accessToken
@@ -164,6 +168,7 @@ public class AuthService(IUserRepository userRepository, ITokenService tokenServ
     {
         new("email", user.Email!),
         new ("firstName",user.FirstName),
+        new ("id",user.Id),
         new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
     };
 

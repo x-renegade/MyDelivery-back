@@ -1,5 +1,4 @@
 ﻿using Application.Common.Contracts.Services;
-using Application.Common.Exceptions;
 using Application.Common.Models.User.Requests;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

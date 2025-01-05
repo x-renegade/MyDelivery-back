@@ -6,6 +6,7 @@ public interface IUserRepository
 {
     Task<User?> GetUserByEmailAsync(string email);
     Task<User?> GetUserByNameAsync(string userName);
+    Task<User?> GetUserByIdAsync(string id);
     Task<IList<string>> GetUserRolesAsync(User user);
     Task<IList<User>> GetAllUsersAsync();
     Task<bool> CreateUserAsync(User user, string password);

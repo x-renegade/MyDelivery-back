@@ -70,5 +70,10 @@ namespace Infrastructure.Repositories
             await signInManager.SignInAsync(user, isPersistent);
             return true;
         }
+
+        public async Task<User?> GetUserByIdAsync(string id)
+        {
+            return await userManager.FindByIdAsync(id);
+        }
     }
 }
