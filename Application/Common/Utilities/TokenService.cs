@@ -1,7 +1,9 @@
 ﻿using Application.Common.Contracts;
+using Application.Common.Contracts.Repositories;
 using Application.Common.Contracts.Services;
 using Application.Common.Exceptions;
 using Application.Common.Models.User.Jwt;
+using Domain.Entities;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -10,7 +12,7 @@ using System.Text;
 
 namespace Application.Common.Utilities
 {
-    public class TokenService(IAppConfiguration configuration) : ITokenService
+    public class TokenService(IAppConfiguration configuration,IUserRepository userRepository) : ITokenService
     {
         public string GenerateRefreshToken()
         {
@@ -87,10 +89,11 @@ namespace Application.Common.Utilities
                 throw new InvalidTokenException("Access Token does not contain a valid firstName claim.");
             data.Email = nameClaim.Value;
 
-            var roleClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "role");
-            if (roleClaim == null || string.IsNullOrEmpty(roleClaim.Value))
+            var roleClaims = jwtToken.Claims.Where(c => c.Type == "roles").ToList();
+            if (roleClaims.Count == 0)
                 throw new InvalidTokenException("Access Token does not contain a valid role claim.");
-            data.Email = roleClaim.Value;
+            var roles = roleClaims.Select(c => c.Value).ToList();
+            data.Roles = roles!;
 
             var expClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "exp");
             if (expClaim == null || string.IsNullOrEmpty(expClaim.Value))
@@ -99,7 +102,29 @@ namespace Application.Common.Utilities
 
             return data;
         }
+        public async Task<(string AccessToken, string RefreshToken)> GenerateTokensAsync(User user, IList<Claim> additionalClaims)
+        {
+            var claims = new List<Claim>
+    {
+        new("email", user.Email!),
+        new ("firstName",user.FirstName),
+        new ("id",user.Id),
+        new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+    };
 
-       
+            claims.AddRange(additionalClaims);
+
+            var token = GenerateAccessToken(claims);
+            var refreshToken = GenerateRefreshToken();
+
+            user.RefreshToken = refreshToken;
+            user.RefreshTokenExpiryTime = DateTime.Now.AddDays(
+                int.TryParse(configuration.GetValue("JWT:RefreshTokenValidityInDays"), out var days) ? days : 7
+            );
+
+            await userRepository.UpdateUserAsync(user);
+
+            return (new JwtSecurityTokenHandler().WriteToken(token), refreshToken);
+        }
     }
 }

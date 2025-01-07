@@ -1,11 +1,13 @@
 ﻿using Api.Extensions;
 using Api.Middlewares;
+using Api.Validations;
 using Application.Common.Contracts;
 using Application.Common.Contracts.Repositories;
 using Application.Common.Contracts.Services;
 using Application.Common.Utilities;
 using Infrastructure.Repositories;
 using Infrastructure.Services.Auth;
+using Infrastructure.Services.Auth.Validations;
 
 namespace Api.Services.App
 {
@@ -23,10 +25,14 @@ namespace Api.Services.App
             services.AddScoped<IAppConfiguration, AppConfiguration>();
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<ITokenExtractionService, TokenExtractionService>();
+            services.AddScoped<RefreshTokenValidator>();
 
 
             services.AddLogging();
-            services.AddControllers();
+            services.AddControllers(options =>
+            {
+              //  options.Filters.Add<AuthorizeTokenValidationFilter>(); 
+            });
 
 
             services.ConfigureCors(configuration);

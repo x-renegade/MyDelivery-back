@@ -70,7 +70,7 @@ namespace Infrastructure.Repositories
             if (!result)
                 throw new UserException("Failed to create user.");
 
-            await AddUserToRoleAsync(user, UserRoles.User); 
+            await AddUserToRoleAsync(user, UserRoles.User);
             return result;
         }
     }

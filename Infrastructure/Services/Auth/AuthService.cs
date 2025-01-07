@@ -5,14 +5,14 @@ using Application.Common.Exceptions;
 using Application.Common.Models.User.Requests;
 using Application.Common.Models.User.Responses;
 using Domain.Entities;
+using System.Data;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
 namespace Infrastructure.Services.Auth;
 
 public class AuthService(IUserRepository userRepository,
-    ITokenService tokenService,
-    IAppConfiguration appConfiguration,ITokenExtractionService tokenExtractionService) : IAuthService
+    ITokenService tokenService,ITokenExtractionService tokenExtractionService) : IAuthService
 {
     public async Task<RefreshTokenResponse> RefreshTokenAsync()
     {
@@ -30,8 +30,8 @@ public class AuthService(IUserRepository userRepository,
             throw new InvalidTokenException("Invalid or expired Refresh Token.");
 
         var userRoles = await userRepository.GetUserRolesAsync(user);
-        var claims = userRoles.Select(role => new Claim("role", role)).ToList();
-        var (newAccessToken, newRefreshToken) = await GenerateTokensAsync(user, claims);
+        var claims = userRoles.Select(role => new Claim("roles", role)).ToList();
+        var (newAccessToken, newRefreshToken) = await tokenService.GenerateTokensAsync(user, claims);
 
         
         tokenExtractionService.SetRefreshToCookie(newRefreshToken);
@@ -75,8 +75,8 @@ public class AuthService(IUserRepository userRepository,
         var userRoles = await userRepository.GetUserRolesAsync(user);
 
         // Генерируем токены
-        var claims = userRoles.Select(role => new Claim("role", role)).ToList();
-        (string accessToken, string refreshToken) = await GenerateTokensAsync(user, claims);
+        var claims = userRoles.Select(role => new Claim("roles", role)).ToList();
+        (string accessToken, string refreshToken) = await tokenService.GenerateTokensAsync(user, claims);
 
         tokenExtractionService.SetRefreshToCookie(refreshToken);
 
@@ -112,32 +112,6 @@ public class AuthService(IUserRepository userRepository,
 
         // Удаляем RefreshToken из куки
         tokenExtractionService.RemoveRefreshFromCookie();
-    }
-
-
-    public async Task<(string AccessToken, string RefreshToken)> GenerateTokensAsync(User user, IList<Claim> additionalClaims)
-    {
-        var claims = new List<Claim>
-    {
-        new("email", user.Email!),
-        new ("firstName",user.FirstName),
-        new ("id",user.Id),
-        new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-    };
-
-        claims.AddRange(additionalClaims);
-
-        var token = tokenService.GenerateAccessToken(claims);
-        var refreshToken = tokenService.GenerateRefreshToken();
-
-        user.RefreshToken = refreshToken;
-        user.RefreshTokenExpiryTime = DateTime.Now.AddDays(
-            int.TryParse(appConfiguration.GetValue("JWT:RefreshTokenValidityInDays"), out var days) ? days : 7
-        );
-
-        await userRepository.UpdateUserAsync(user);
-
-        return (new JwtSecurityTokenHandler().WriteToken(token), refreshToken);
     }
 
 }

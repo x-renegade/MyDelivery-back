@@ -15,7 +15,7 @@ public class TokenData
     [Required(ErrorMessage = "Jti is required")]
     public  string Jti { get; set; }=null!;
     [Required(ErrorMessage = "Role is required")]
-    public  string Role { get; set; } = null!;
+    public  List<string> Roles { get; set; } = null!;
     [Required(ErrorMessage = "Exp is required")]
     public  string Exp { get; set; } = null!;
 }

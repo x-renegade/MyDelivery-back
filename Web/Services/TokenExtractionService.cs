@@ -34,6 +34,7 @@ public class TokenExtractionService(IHttpContextAccessor httpContextAccessor, IA
     {
         var context = httpContextAccessor.HttpContext ??
         throw new InvalidOperationException("No active HTTP context.");
+
         context.Response.Cookies.Delete("refreshToken");
     }
 
