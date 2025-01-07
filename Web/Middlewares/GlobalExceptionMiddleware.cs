@@ -60,7 +60,7 @@ public class GlobalExceptionMiddleware(ILogger<GlobalExceptionMiddleware> logger
         context.Response.StatusCode = (int)statusCode;
         var result = new
         {
-            error = errorMessage,
+            message = errorMessage,
             type = errorType
         };
 

@@ -1,5 +1,5 @@
 using Api.Extensions;
-using Api.Services;
+using Api.Services.App;
 namespace Api;
 
 public class Program
@@ -24,4 +24,5 @@ public class Program
 
         app.Run();
     }
+    
 }

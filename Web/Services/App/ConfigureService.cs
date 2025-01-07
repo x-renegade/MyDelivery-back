@@ -7,7 +7,7 @@ using Application.Common.Utilities;
 using Infrastructure.Repositories;
 using Infrastructure.Services.Auth;
 
-namespace Api.Services
+namespace Api.Services.App
 {
     public static class ConfigureService
     {
@@ -17,11 +17,12 @@ namespace Api.Services
 
             services.AddAuthentication();
             services.AddAuthorization();
+            services.AddScoped<GlobalExceptionMiddleware>();
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<ITokenService, TokenService>();
-            services.AddScoped<GlobalExceptionMiddleware>();
             services.AddScoped<IAppConfiguration, AppConfiguration>();
             services.AddScoped<IUserRepository, UserRepository>();
+            services.AddScoped<ITokenExtractionService, TokenExtractionService>();
 
 
             services.AddLogging();

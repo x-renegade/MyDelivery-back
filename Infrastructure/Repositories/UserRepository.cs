@@ -1,12 +1,13 @@
 ﻿
 using Application.Common.Contracts.Repositories;
+using Application.Common.Exceptions;
 using Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Repositories
 {
-    public class UserRepository(UserManager<User> userManager, SignInManager<User> signInManager) : IUserRepository
+    public class UserRepository(UserManager<User> userManager) : IUserRepository
     {
         public async Task<User?> GetUserByEmailAsync(string email)
         {
@@ -48,32 +49,29 @@ namespace Infrastructure.Repositories
         {
             return await userManager.CheckPasswordAsync(user, password);
         }
-        public async Task SignOutUserAsync()
+        public async Task SignOutUserAsync(User user)
         {
-            // Получаем текущего пользователя из контекста
-            var user = await userManager.GetUserAsync(signInManager.Context.User) ?? 
-                throw new InvalidOperationException("No authenticated user found.");
-
             // Удаляем RefreshToken и его срок действия
             user.RefreshToken = null;
             user.RefreshTokenExpiryTime = DateTime.MinValue;
             await UpdateUserAsync(user);
-
-            // Завершаем сессию
-            await signInManager.SignOutAsync();
         }
 
-        public async Task<bool> SignInUserAsync(User user, bool isPersistent)
-        {
-            ArgumentNullException.ThrowIfNull(user);
-
-            await signInManager.SignInAsync(user, isPersistent);
-            return true;
-        }
+        
 
         public async Task<User?> GetUserByIdAsync(string id)
         {
             return await userManager.FindByIdAsync(id);
+        }
+
+        public async Task<bool> SignUpAsync(User user,string password)
+        {
+            var result = await CreateUserAsync(user, password);
+            if (!result)
+                throw new UserException("Failed to create user.");
+
+            await AddUserToRoleAsync(user, UserRoles.User); 
+            return result;
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿namespace Application.Common.Contracts.Repositories;
 
+using Application.Common.Models.User.Requests;
 using Domain.Entities;
 
 public interface IUserRepository
@@ -13,6 +14,6 @@ public interface IUserRepository
     Task UpdateUserAsync(User user);
     Task AddUserToRoleAsync(User user, string role);
     Task<bool> CheckPasswordAsync(User user, string password);
-    Task<bool> SignInUserAsync(User user, bool isPersistent);
-    Task SignOutUserAsync();
+    Task<bool> SignUpAsync(User user,string password);
+    Task SignOutUserAsync(User user);
 }

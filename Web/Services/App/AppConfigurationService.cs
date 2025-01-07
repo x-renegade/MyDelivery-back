@@ -1,6 +1,6 @@
 ﻿using Application.Common.Contracts;
 
-namespace Api.Services
+namespace Api.Services.App
 {
     public class AppConfiguration(IConfiguration configuration) : IAppConfiguration
     {

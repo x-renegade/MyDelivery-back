@@ -1,6 +1,8 @@
 ﻿using Api.Middlewares;
+using Microsoft.AspNetCore.Builder;
+using System.Net.WebSockets;
 
-namespace Api.Services
+namespace Api.Services.App
 {
     public static class ApplicationBuilderExtensionsService
     {
@@ -17,6 +19,7 @@ namespace Api.Services
             app.UseMiddleware<GlobalExceptionMiddleware>();
 
             // HTTPS, CORS, маршруты и аутентификация
+            app.UseWebSockets();
             app.UseHttpsRedirection();
             app.UseRouting();
             app.UseCors("myCors");

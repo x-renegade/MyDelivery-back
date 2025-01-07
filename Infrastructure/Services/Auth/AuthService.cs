@@ -5,47 +5,26 @@ using Application.Common.Exceptions;
 using Application.Common.Models.User.Requests;
 using Application.Common.Models.User.Responses;
 using Domain.Entities;
-using Microsoft.AspNetCore.Http;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
 namespace Infrastructure.Services.Auth;
 
-public class AuthService(IUserRepository userRepository, ITokenService tokenService, IAppConfiguration appConfiguration, IHttpContextAccessor httpContextAccessor) : IAuthService
+public class AuthService(IUserRepository userRepository,
+    ITokenService tokenService,
+    IAppConfiguration appConfiguration,ITokenExtractionService tokenExtractionService) : IAuthService
 {
-    public async Task<RefreshTokenResponse> RefreshTokenAsync(RefreshTokenRequest request)
+    public async Task<RefreshTokenResponse> RefreshTokenAsync()
     {
-        var context = httpContextAccessor.HttpContext ??
-            throw new InvalidOperationException("No active HTTP context.");
 
-        var accessToken = request.AccessToken;
 
-        var refreshToken = context.Request.Cookies["refreshToken"];
-        if (string.IsNullOrEmpty(refreshToken))
-            throw new InvalidTokenException("Refresh Token is missing.");
+        var refreshToken = tokenExtractionService.GetRefreshFromCookie();
 
-        var tokenHandler = new JwtSecurityTokenHandler();
-        JwtSecurityToken jwtToken;
-        try
-        {
-            jwtToken = tokenHandler.ReadJwtToken(accessToken);
-        }
-        catch (Exception)
-        {
-            throw new InvalidTokenException("Access Token is invalid.");
-        }
+        var accessToken = tokenExtractionService.GetAccessFromHeader();
 
-        //var emailClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "email");
-        //if (emailClaim == null || string.IsNullOrEmpty(emailClaim.Value))
-        //    throw new InvalidTokenException("Access Token does not contain a valid email claim.");
-        //var email = emailClaim.Value;
+        var tokenData=tokenService.GetData(accessToken);
 
-        var idClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "id");
-        if (idClaim == null || string.IsNullOrEmpty(idClaim.Value))
-            throw new InvalidTokenException("Access Token does not contain a valid email claim.");
-        var id = idClaim.Value;
-
-        var user = await userRepository.GetUserByIdAsync(id) ??
+        var user = await userRepository.GetUserByIdAsync(tokenData.Id) ??
             throw new UserNotFoundException("User does not exist.");
         if (user.RefreshToken != refreshToken || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
             throw new InvalidTokenException("Invalid or expired Refresh Token.");
@@ -54,14 +33,8 @@ public class AuthService(IUserRepository userRepository, ITokenService tokenServ
         var claims = userRoles.Select(role => new Claim("role", role)).ToList();
         var (newAccessToken, newRefreshToken) = await GenerateTokensAsync(user, claims);
 
-        var cookieOptions = new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = true,
-            SameSite = SameSiteMode.Strict,
-            Expires = DateTime.UtcNow.AddDays(Convert.ToDouble(appConfiguration.GetValue("JWT:RefreshTokenValidityInDays")))
-        };
-        context.Response.Cookies.Append("refreshToken", newRefreshToken, cookieOptions);
+        
+        tokenExtractionService.SetRefreshToCookie(newRefreshToken);
 
         return new RefreshTokenResponse
         {
@@ -69,23 +42,23 @@ public class AuthService(IUserRepository userRepository, ITokenService tokenServ
         };
     }
 
-    public async Task RevokeAsync(User user)
-    {
-        user.RefreshToken = null;
-        user.RefreshTokenExpiryTime = DateTime.MinValue;
-        await userRepository.UpdateUserAsync(user);
-    }
+    //public async Task RevokeAsync(User user)
+    //{
+    //    user.RefreshToken = null;
+    //    user.RefreshTokenExpiryTime = DateTime.MinValue;
+    //    await userRepository.UpdateUserAsync(user);
+    //}
 
-    public async Task RevokeAllAsync()
-    {
-        var users = await userRepository.GetAllUsersAsync();
-        await Parallel.ForEachAsync(users, async (user, _) =>
-        {
-            user.RefreshToken = null;
-            user.RefreshTokenExpiryTime = DateTime.MinValue;
-            await userRepository.UpdateUserAsync(user);
-        });
-    }
+    //public async Task RevokeAllAsync()
+    //{
+    //    var users = await userRepository.GetAllUsersAsync();
+    //    await Parallel.ForEachAsync(users, async (user, _) =>
+    //    {
+    //        user.RefreshToken = null;
+    //        user.RefreshTokenExpiryTime = DateTime.MinValue;
+    //        await userRepository.UpdateUserAsync(user);
+    //    });
+    //}
 
     public async Task<SignInResponse> SignInAsync(SignInRequest request)
     {
@@ -98,8 +71,6 @@ public class AuthService(IUserRepository userRepository, ITokenService tokenServ
         if (!isPasswordValid)
             throw new PasswordIncorrectException("The password is incorrect.");
 
-        await userRepository.SignInUserAsync(user, isPersistent: false);
-
         // Получаем роли пользователя
         var userRoles = await userRepository.GetUserRolesAsync(user);
 
@@ -107,19 +78,7 @@ public class AuthService(IUserRepository userRepository, ITokenService tokenServ
         var claims = userRoles.Select(role => new Claim("role", role)).ToList();
         (string accessToken, string refreshToken) = await GenerateTokensAsync(user, claims);
 
-        var context = httpContextAccessor.HttpContext; 
-        if (context is not null)
-        {
-            var cookieOptions = new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.Strict,
-                Expires = DateTime.UtcNow.AddDays(Convert.ToDouble(appConfiguration.GetValue("JWT:RefreshTokenValidityInDays")))
-            };
-
-            context.Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
-        }
+        tokenExtractionService.SetRefreshToCookie(refreshToken);
 
         return new SignInResponse
         {
@@ -141,24 +100,18 @@ public class AuthService(IUserRepository userRepository, ITokenService tokenServ
             FirstName = request.FirstName
         };
 
-        var result = await userRepository.CreateUserAsync(user, request.Password);
-        if (!result)
-            throw new UserException("Failed to create user.");
-
-        await userRepository.AddUserToRoleAsync(user, UserRoles.User);
-
-        return true;
+        return await userRepository.SignUpAsync(user,request.Password);
     }
     public async Task SignOutAsync()
     {
-        var context = httpContextAccessor.HttpContext ??
-            throw new InvalidOperationException("No active HTTP context.");
 
+        var tokenData = tokenService.GetData(tokenExtractionService.GetAccessFromHeader());
+        var user= await userRepository.GetUserByIdAsync(tokenData.Id);
         // Вызываем SignOutUserAsync для завершения сессии
-        await userRepository.SignOutUserAsync();
+        await userRepository.SignOutUserAsync(user!);
 
         // Удаляем RefreshToken из куки
-        context.Response.Cookies.Delete("refreshToken");
+        tokenExtractionService.RemoveRefreshFromCookie();
     }
 
 
@@ -174,7 +127,7 @@ public class AuthService(IUserRepository userRepository, ITokenService tokenServ
 
         claims.AddRange(additionalClaims);
 
-        var token = tokenService.GenerateToken(claims);
+        var token = tokenService.GenerateAccessToken(claims);
         var refreshToken = tokenService.GenerateRefreshToken();
 
         user.RefreshToken = refreshToken;
