@@ -1,5 +1,5 @@
 ﻿using Application.Common.Contracts.Services;
-using Application.Common.Models.User.Requests;
+using Application.Common.Models.User.Requests.Auth;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

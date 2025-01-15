@@ -1,7 +1,7 @@
-﻿namespace Application.Common.Contracts.Repositories;
+﻿using Shared.Identity;
 
-using Application.Common.Models.User.Requests;
-using Domain.Entities;
+namespace Application.Common.Contracts.Repositories;
+
 
 public interface IUserRepository
 {

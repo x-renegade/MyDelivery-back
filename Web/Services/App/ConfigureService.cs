@@ -5,9 +5,12 @@ using Application.Common.Contracts;
 using Application.Common.Contracts.Repositories;
 using Application.Common.Contracts.Services;
 using Application.Common.Utilities;
-using Infrastructure.Repositories;
+using Infrastructure.Repositories.Location;
+using Infrastructure.Repositories.User;
 using Infrastructure.Services.Auth;
 using Infrastructure.Services.Auth.Validations;
+using Infrastructure.Services.Location;
+using Microsoft.AspNetCore.Mvc.Filters;
 
 namespace Api.Services.App
 {
@@ -19,12 +22,14 @@ namespace Api.Services.App
 
             services.AddAuthentication();
             services.AddAuthorization();
-            services.AddScoped<GlobalExceptionMiddleware>();
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<ITokenService, TokenService>();
             services.AddScoped<IAppConfiguration, AppConfiguration>();
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<ITokenExtractionService, TokenExtractionService>();
+            services.AddScoped<IAuthorizationFilter, AuthorizeTokenValidationFilter>();
+            services.AddScoped<ILocationResository,LocationRepository>();
+            services.AddScoped<ILocationService,LocationService>();
             services.AddScoped<RefreshTokenValidator>();
 
 
@@ -34,6 +39,7 @@ namespace Api.Services.App
               //  options.Filters.Add<AuthorizeTokenValidationFilter>(); 
             });
 
+            services.AddScoped<GlobalExceptionMiddleware>();
 
             services.ConfigureCors(configuration);
             services.CongigureContextNpgsql(configuration);

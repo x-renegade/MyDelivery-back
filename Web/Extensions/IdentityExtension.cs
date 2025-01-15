@@ -1,6 +1,7 @@
-﻿using Domain.Entities;
+﻿
 using Infrastructure.Data;
 using Microsoft.AspNetCore.Identity;
+using Shared.Identity;
 
 namespace Api.Extensions
 {

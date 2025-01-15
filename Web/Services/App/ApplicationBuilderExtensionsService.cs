@@ -1,4 +1,5 @@
 ﻿using Api.Middlewares;
+using Api.Validations;
 using Microsoft.AspNetCore.Builder;
 using System.Net.WebSockets;
 
@@ -15,8 +16,6 @@ namespace Api.Services.App
                 app.UseSwaggerUI();
             }
 
-            // Middleware для обработки ошибок
-            app.UseMiddleware<GlobalExceptionMiddleware>();
 
             // HTTPS, CORS, маршруты и аутентификация
             app.UseWebSockets();
@@ -26,6 +25,8 @@ namespace Api.Services.App
             app.UseAuthentication();
             app.UseAuthorization();
 
+            // Middleware для обработки ошибок
+            app.UseMiddleware<GlobalExceptionMiddleware>();
             // Настройка конечных точек
             app.MapControllers();
         }

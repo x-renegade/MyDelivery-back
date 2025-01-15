@@ -9,6 +9,7 @@ public class AuthorizeTokenValidationFilter(RefreshTokenValidator refreshTokenVa
 {
     public async void OnAuthorization(AuthorizationFilterContext context)
     {
+        
         // Проверка, если метод контроллера имеет атрибут [Authorize]
         var hasAuthorizeAttribute = context.ActionDescriptor.EndpointMetadata
             .Any(metadata => metadata is AuthorizeAttribute);
@@ -16,8 +17,8 @@ public class AuthorizeTokenValidationFilter(RefreshTokenValidator refreshTokenVa
         if (!hasAuthorizeAttribute)
             return;  // Если атрибута нет, пропускаем
 
-        if (await refreshTokenValidator.RefreshTokensEqual() == false)
-            context.Result = new UnauthorizedResult(); 
-
+        await refreshTokenValidator.RefreshTokensEqual();
+        
+       
     }
 }

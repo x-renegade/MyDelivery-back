@@ -1,5 +1,5 @@
 ﻿using Application.Common.Models.User.Jwt;
-using Domain.Entities;
+using Shared.Identity;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 

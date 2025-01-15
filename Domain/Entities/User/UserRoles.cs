@@ -1,5 +1,4 @@
-﻿
-namespace Domain.Entities
+﻿namespace Domain.Entities.User
 {
     public static class UserRoles
     {

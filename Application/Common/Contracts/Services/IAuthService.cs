@@ -1,5 +1,5 @@
-﻿using Application.Common.Models.User.Requests;
-using Application.Common.Models.User.Responses;
+﻿using Application.Common.Models.User.Requests.Auth;
+using Application.Common.Models.User.Responses.Auth;
 
 namespace Application.Common.Contracts.Services;
 

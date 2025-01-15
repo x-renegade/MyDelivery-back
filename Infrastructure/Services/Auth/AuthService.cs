@@ -1,13 +1,12 @@
-﻿using Application.Common.Contracts;
+﻿
 using Application.Common.Contracts.Repositories;
 using Application.Common.Contracts.Services;
 using Application.Common.Exceptions;
-using Application.Common.Models.User.Requests;
-using Application.Common.Models.User.Responses;
-using Domain.Entities;
 using System.Data;
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using Shared.Identity;
+using Application.Common.Models.User.Responses.Auth;
+using Application.Common.Models.User.Requests.Auth;
 
 namespace Infrastructure.Services.Auth;
 

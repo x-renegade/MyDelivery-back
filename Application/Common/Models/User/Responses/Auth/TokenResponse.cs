@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Application.Common.Models.User.Responses
+namespace Application.Common.Models.User.Responses.Auth
 {
     public abstract class TokenResponse
     {

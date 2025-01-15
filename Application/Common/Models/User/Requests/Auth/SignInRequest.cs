@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Application.Common.Models.User.Requests
+namespace Application.Common.Models.User.Requests.Auth
 {
     public class SignInRequest : BaseRequest
     {

@@ -5,6 +5,7 @@ using Application.Common.Exceptions;
 using Application.Common.Models.User.Jwt;
 using Domain.Entities;
 using Microsoft.IdentityModel.Tokens;
+using Shared.Identity;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;

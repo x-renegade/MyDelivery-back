@@ -1,6 +1,4 @@
-﻿
-
-namespace Application.Common.Models.User.Responses
+﻿namespace Application.Common.Models.User.Responses.Auth
 {
     public class RefreshTokenResponse : TokenResponse
     {

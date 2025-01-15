@@ -15,10 +15,10 @@ public class GlobalExceptionMiddleware(ILogger<GlobalExceptionMiddleware> logger
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "An unexpected error occurred.");
-
             // Обработка исключения
             await HandleExceptionAsync(context, ex);
+            logger.LogError(ex, "An unexpected error occurred.");
+
         }
     }
 
